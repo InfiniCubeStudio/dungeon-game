@@ -1,0 +1,13 @@
+:root body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    margin: 0px;
+    padding: 0px;
+    background-color: black;
+}
+
+canvas {
+    width: 100vw;
+    height: 100vh;
+}
