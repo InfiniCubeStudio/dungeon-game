@@ -16,6 +16,9 @@ export class RenderEngine {
     camera: THREE.PerspectiveCamera;
     camRotation: THREE.Vector2;
 
+    hand: THREE.Object3D | null = null;
+    handMixer: THREE.AnimationMixer | null = null;
+
     private lastTime: number; // used for Deltatime calculation
 
     private rafID: number | null = null; // used to fix StrictMode double initialization issue
@@ -38,7 +41,7 @@ export class RenderEngine {
         this.scene.fog = new THREE.FogExp2(new THREE.Color().setHex(0x0F110E), 0.06);
         this.scene.background = new THREE.Color().setHex(0x0F110E);
 
-        this.camera = new THREE.PerspectiveCamera(90, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
+        this.camera = new THREE.PerspectiveCamera(90, canvas.clientWidth / canvas.clientHeight, 0.01, 1000);
         this.camRotation = new THREE.Vector2(0, 0);
         this.camera.rotation.order = "YXZ";
         this.camera.position.y = 1.3;
@@ -58,27 +61,22 @@ export class RenderEngine {
         this.canvas.addEventListener('click', this.ClickCanvas);
         this.Resize();
 
-        let handMixer: THREE.AnimationMixer;
 
         const loader = new GLTFLoader();
+        loader.load('https://cdn.jsdelivr.net/gh/InfiniCubeStudio/dungeon-game@main/DungeonGame/public/running.glb', (gltf) => {
+            this.hand = gltf.scene;
 
-        loader.setRequestHeader({
-            'ngrok-skip-browser-warning': 'true'
-        });
+            this.hand.rotateY(Math.PI);
+            this.hand.rotateX(-0.1);
+            this.hand.position.set(-.05, 0.02, 0.05); 
+            this.hand.scale.set(0.3, 0.3, 0.3);
 
-        loader.load('/models/running.glb', (gltf) => {
-            const hand = gltf.scene;
-
-            // 1. Position it (Adjust these values to fit your view)
-            hand.position.set(0.3, -0.4, -0.6); 
-            hand.rotation.set(0, Math.PI, 0); // Might need rotation depending on export
-            
-            // 2. Parent it to the camera
-            this.camera.add(hand);
+            this.camera.add(this.hand);
+            this.scene.add(this.camera); // Ensure camera is in the scene
 
             // 3. Setup Animation
-            handMixer = new THREE.AnimationMixer(hand);
-            const action = handMixer.clipAction(gltf.animations[0]);
+            this.handMixer = new THREE.AnimationMixer(this.hand);
+            const action = this.handMixer.clipAction(gltf.animations[0]);
             action.play();
         });
     }
@@ -129,17 +127,23 @@ export class RenderEngine {
     // This is essentially the draw function
     private RenderFrame = () => {
         this.rafID = requestAnimationFrame(this.RenderFrame);
+        
+        const now = performance.now();
+        const deltaTime = Math.min((now - this.lastTime) / 1000, 1);
+        this.lastTime = now;
+
         this.input.Update();
         this.testBox.userData.grass.update(performance.now() * -0.002);
         this.MoveCamera();
         this.renderer.render(this.scene, this.camera);
         this.input.mouseMovement.set(0, 0);
+        if (this.hand) {
+            this.handMixer!.update(deltaTime);
+        }
     }
 
     private MoveCamera() {
-        const now = performance.now();
-        const deltaTime = Math.min((now - this.lastTime) / 1000, 1);
-        this.lastTime = now;
+        
 
         //let diff: THREE.Vector2 = new THREE.Vector2((this.input.mouse.y - this.input.prevMouse.y) * -0.001, (this.input.mouse.x - this.input.prevMouse.x) * -0.001);
 
