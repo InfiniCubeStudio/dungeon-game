@@ -4,6 +4,7 @@ import { Input } from '../input';
 import { Grass } from './Grass/Grass';
 import { Sky } from 'three/examples/jsm/objects/Sky.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { PerlinNoise2D } from './Noise';
 
 export class RenderEngine {
 
@@ -23,8 +24,9 @@ export class RenderEngine {
 
     private rafID: number | null = null; // used to fix StrictMode double initialization issue
 
-    private testBox: THREE.Mesh = new THREE.Mesh(new THREE.BoxGeometry(5, 1, 5), new THREE.MeshBasicMaterial({ color: "#000" }))
+    private plane: THREE.Mesh;
 
+    static noise: PerlinNoise2D = new PerlinNoise2D(Math.random() * 10000);
 
     constructor(canvas: HTMLCanvasElement) {
 
@@ -47,9 +49,35 @@ export class RenderEngine {
         this.camera.position.y = 1.3;
         this.camera.position.z = 1.5;
 
-        this.testBox.position.set(0, 0, 0);
-        this.scene.add(this.testBox);
-        this.testBox.userData.grass = new Grass(this.testBox, 10000);
+        this.plane = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({ color: "#268636" }));
+
+        var vertices = [];
+        var indices = [];
+
+        for (let z = 0; z <= 100; z++) {
+            for (let x = 0; x <= 100; x++) {
+                const y = RenderEngine.noise.noise(x * 0.1, z * 0.1) * 2;
+                vertices.push((x - 50) * 1, y, (z - 50) * 1);
+            }
+        }
+
+        for (let z = 0; z < 100; z++) {
+            for (let x = 0; x < 100; x++) {
+                const a = x + (100 + 1) * z;
+                const b = x + (100 + 1) * (z + 1);
+                const c = (x + 1) + (100 + 1) * (z + 1);
+                const d = (x + 1) + (100 + 1) * z;
+
+                indices.push(a, b, c);
+                indices.push(a, c, d);
+            }
+        }
+
+        (this.plane.geometry as THREE.BufferGeometry).setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        (this.plane.geometry as THREE.BufferGeometry).setIndex(indices);
+
+        this.scene.add(this.plane);
+        this.plane.userData.grass = new Grass(this.plane, 1000000);
 
         this.InitializeSky();
 
@@ -133,7 +161,7 @@ export class RenderEngine {
         this.lastTime = now;
 
         this.input.Update();
-        this.testBox.userData.grass.update(performance.now() * -0.002);
+        this.plane.userData.grass.update(performance.now() * -0.002);
         this.MoveCamera();
         this.renderer.render(this.scene, this.camera);
         this.input.mouseMovement.set(0, 0);

@@ -9,6 +9,7 @@ import {
 
 import { createGrassBlade } from "./GrassBlade";
 import { createGrassMaterial } from "./GrassMaterial";
+import { RenderEngine } from "../RenderEngine";
 
 export class Grass {
     readonly mesh: InstancedMesh;
@@ -18,6 +19,7 @@ export class Grass {
     private readonly dummy = new Object3D();
 
     constructor(parent: Mesh, count = 500) {
+
         this.parent = parent;
 
         const geometry = createGrassBlade();
@@ -31,6 +33,10 @@ export class Grass {
         this.parent.add(this.mesh);
     }
 
+    public updatePlayerPosition(position: Vector3): void {
+        this.material.uniforms.playerPos.value.copy(position);
+    }
+
     private spawnOnTop(): void {
         this.parent.geometry.computeBoundingBox();
         const box = this.parent.geometry.boundingBox!;
@@ -40,11 +46,10 @@ export class Grass {
         for (let i = 0; i < this.mesh.count; i++) {
             this.dummy.position.set(
                 (Math.random() - 0.5) * size.x,
-                size.y / 2,
+                0,
                 (Math.random() - 0.5) * size.z
             );
-
-            this.dummy.rotation.y = Math.random() * Math.PI * 0.4;
+            this.dummy.position.y = RenderEngine.noise.noise((this.dummy.position.x + 50) * 0.1, (this.dummy.position.z + 50) * 0.1) * 2,
             this.dummy.updateMatrix();
             this.mesh.setMatrixAt(i, this.dummy.matrix);
         }
